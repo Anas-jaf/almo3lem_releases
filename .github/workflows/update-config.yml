@@ -1,6 +1,5 @@
 name: Update config with latest release
 
-# يمكن تشغيله عند أي Release جديد أو يدوياً
 on:
   release:
     types: [published]
@@ -11,24 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ جلب آخر Release من المستودع عبر GitHub API
-      - name: Get latest release info
+      # 1️⃣ جلب آخر Release
+      - name: Get latest release tag
         id: latest
         run: |
           LATEST_JSON=$(curl -s -H "Accept: application/vnd.github+json" https://api.github.com/repos/Anas-jaf/almo3lem_releases/releases/latest)
           VERSION=$(echo "$LATEST_JSON" | jq -r .tag_name)
-          FILE_NAME=$(echo "$LATEST_JSON" | jq -r '.assets[0].name')
-          DOWNLOAD_URL=$(echo "$LATEST_JSON" | jq -r '.assets[0].browser_download_url')
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "FILE_NAME=$FILE_NAME" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=$DOWNLOAD_URL" >> $GITHUB_ENV
 
-      # 2️⃣ حساب SHA256 للملف
-      - name: Compute SHA256 checksum
+      # 2️⃣ تحديد الرابط حسب الصيغة المطلوبة
+      - name: Set update URL
         run: |
-          curl -L -o $FILE_NAME $DOWNLOAD_URL
-          SHA256=$(sha256sum $FILE_NAME | awk '{print $1}')
-          echo "SHA256=$SHA256" >> $GITHUB_ENV
+          UPDATE_URL="https://github.com/Anas-jaf/almo3lem_releases/releases/download/${VERSION}_light/almo3lem_setup_light.exe"
+          echo "UPDATE_URL=$UPDATE_URL" >> $GITHUB_ENV
 
       # 3️⃣ نسخ مستودع الكونفيغ
       - name: Checkout config repo
@@ -37,7 +31,7 @@ jobs:
           repository: mostafatarawneh/almo3lem-config
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      # 4️⃣ تحقق من وجود update.json قبل التعديل
+      # 4️⃣ تحقق من وجود update.json
       - name: Check update.json exists
         run: |
           if [ ! -f update.json ]; then
@@ -45,16 +39,15 @@ jobs:
             exit 1
           fi
 
-      # 5️⃣ تحديث update.json
+      # 5️⃣ تحديث update.json بالصيغة المطلوبة
       - name: Update update.json
         run: |
-          jq \
+          jq -n \
             --arg version "$VERSION" \
-            --arg url "$DOWNLOAD_URL" \
-            --arg sha "$SHA256" \
-            '.latest_version=$version | .download_url=$url | .sha256=$sha' \
-            update.json > tmp.json
-          mv tmp.json update.json
+            --arg url "$UPDATE_URL" \
+            --arg msg "يوجد تحديث جديد يحتوي على تحسينات وأصلاحات." \
+            '{latest_version: $version, update_url: $url, message: $msg, is_active: true}' \
+            > update.json
 
       # 6️⃣ Commit & Push التغييرات
       - name: Commit and push
