@@ -1,34 +1,58 @@
 name: Update config after release
 
+# يشغل الأكشن عند نشر أي Release جديد أو عند إعادة تشغيله يدوياً
 on:
   release:
     types: [published]
+  workflow_dispatch:  # يتيح تشغيل الأكشن يدوياً
 
 jobs:
   update-config:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ تحميل معلومات الريليس
       - name: Extract release info
         run: |
           echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
-          echo "DOWNLOAD_URL=https://github.com/Anas-jaf/almo3lem_releases/releases/download/${GITHUB_REF_NAME}/almo3lem-desktop-${GITHUB_REF_NAME}-setup.exe" >> $GITHUB_ENV
+          FILE_NAME="almo3lem-desktop-${GITHUB_REF_NAME}-setup.exe"
+          echo "FILE_NAME=$FILE_NAME" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=https://github.com/Anas-jaf/almo3lem_releases/releases/download/${GITHUB_REF_NAME}/$FILE_NAME" >> $GITHUB_ENV
 
+      # 2️⃣ حساب SHA256 للملف
+      - name: Compute SHA256 checksum
+        run: |
+          curl -L -o $FILE_NAME $DOWNLOAD_URL
+          SHA256=$(sha256sum $FILE_NAME | awk '{print $1}')
+          echo "SHA256=$SHA256" >> $GITHUB_ENV
+
+      # 3️⃣ نسخ مستودع الكونفيغ
       - name: Checkout config repo
         uses: actions/checkout@v4
         with:
           repository: mostafatarawneh/almo3lem-config
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
+      # 4️⃣ تحقق من وجود update.json قبل التعديل
+      - name: Check update.json exists
+        run: |
+          if [ ! -f update.json ]; then
+            echo "File update.json not found!"
+            exit 1
+          fi
+
+      # 5️⃣ تحديث update.json
       - name: Update update.json
         run: |
           jq \
             --arg version "$VERSION" \
             --arg url "$DOWNLOAD_URL" \
-            '.latest_version=$version | .download_url=$url' \
+            --arg sha "$SHA256" \
+            '.latest_version=$version | .download_url=$url | .sha256=$sha' \
             update.json > tmp.json
           mv tmp.json update.json
 
+      # 6️⃣ Commit & Push التغييرات
       - name: Commit and push
         run: |
           git config user.name "almo3lem-bot"
