@@ -1,0 +1,38 @@
+name: Update config after release
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  update-config:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Extract release info
+        run: |
+          echo "VERSION=${GITHUB_REF_NAME#v}" >> $GITHUB_ENV
+          echo "DOWNLOAD_URL=https://github.com/Anas-jaf/almo3lem_releases/releases/download/${GITHUB_REF_NAME}/almo3lem-desktop-${GITHUB_REF_NAME}-setup.exe" >> $GITHUB_ENV
+
+      - name: Checkout config repo
+        uses: actions/checkout@v4
+        with:
+          repository: mostafatarawneh/almo3lem-config
+          token: ${{ secrets.CONFIG_REPO_TOKEN }}
+
+      - name: Update update.json
+        run: |
+          jq \
+            --arg version "$VERSION" \
+            --arg url "$DOWNLOAD_URL" \
+            '.latest_version=$version | .download_url=$url' \
+            update.json > tmp.json
+          mv tmp.json update.json
+
+      - name: Commit and push
+        run: |
+          git config user.name "almo3lem-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add update.json
+          git commit -m "Update to version $VERSION"
+          git push
