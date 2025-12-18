@@ -26,14 +26,23 @@ jobs:
           UPDATE_URL=$(echo "$LATEST_JSON" | jq -r '.assets[] | select(.name | test("\\.exe$")) | .browser_download_url' | head -n1)
           echo "UPDATE_URL=$UPDATE_URL" >> $GITHUB_ENV
 
-      # 2️⃣ نسخ مستودع الكونفيغ
+      # 2️⃣ عرض النسخة والعنوان في Logs
+      - name: Show release version and title
+        run: |
+          echo "=============================="
+          echo "Latest release version: $VERSION"
+          echo "Release title: $TITLE"
+          echo "Update URL: $UPDATE_URL"
+          echo "=============================="
+
+      # 3️⃣ نسخ مستودع الكونفيغ
       - name: Checkout config repo
         uses: actions/checkout@v4
         with:
           repository: mostafatarawneh/almo3lem-config
           token: ${{ secrets.CONFIG_REPO_TOKEN }}
 
-      # 3️⃣ تحقق من وجود update.json
+      # 4️⃣ تحقق من وجود update.json
       - name: Check update.json exists
         run: |
           if [ ! -f update.json ]; then
@@ -41,7 +50,7 @@ jobs:
             exit 1
           fi
 
-      # 4️⃣ تحديث update.json بالصيغة المطلوبة
+      # 5️⃣ تحديث update.json بالصيغة المطلوبة
       - name: Update update.json
         run: |
           jq -n \
@@ -52,11 +61,11 @@ jobs:
             '{latest_version: $version, title: $title, update_url: $url, message: $msg, is_active: true}' \
             > update.json
 
-      # 5️⃣ Commit & Push التغييرات
+      # 6️⃣ Commit & Push التغييرات
       - name: Commit and push
         run: |
           git config user.name "almo3lem-bot"
           git config user.email "bot@users.noreply.github.com"
           git add update.json
-          git commit -m "Update to latest release $VERSION"
+          git commit -m "Update to latest release $VERSION ($TITLE)"
           git push
