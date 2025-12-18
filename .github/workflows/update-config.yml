@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ جلب آخر Release ونسخة الريليس
+      # 1️⃣ جلب آخر Release ونسخة الريليس والعنوان
       - name: Get latest release info
         id: latest
         run: |
@@ -18,7 +18,9 @@ jobs:
           LATEST_JSON=$(curl -s -H "Accept: application/vnd.github+json" https://api.github.com/repos/Anas-jaf/almo3lem_releases/releases/latest)
           
           VERSION=$(echo "$LATEST_JSON" | jq -r .tag_name)
+          TITLE=$(echo "$LATEST_JSON" | jq -r .name)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
+          echo "TITLE=$TITLE" >> $GITHUB_ENV
 
           # ابحث عن أول ملف exe موجود في assets
           UPDATE_URL=$(echo "$LATEST_JSON" | jq -r '.assets[] | select(.name | test("\\.exe$")) | .browser_download_url' | head -n1)
@@ -44,9 +46,10 @@ jobs:
         run: |
           jq -n \
             --arg version "$VERSION" \
+            --arg title "$TITLE" \
             --arg url "$UPDATE_URL" \
             --arg msg "يوجد تحديث جديد يحتوي على تحسينات وأصلاحات." \
-            '{latest_version: $version, update_url: $url, message: $msg, is_active: true}' \
+            '{latest_version: $version, title: $title, update_url: $url, message: $msg, is_active: true}' \
             > update.json
 
       # 5️⃣ Commit & Push التغييرات
