@@ -16,23 +16,16 @@ jobs:
           echo "Fetching latest release info..."
           LATEST_JSON=$(curl -s -H "Accept: application/vnd.github+json" \
             https://api.github.com/repos/Anas-jaf/almo3lem_releases/releases/latest)
-      
+
           VERSION=$(echo "$LATEST_JSON" | jq -r .tag_name)
           TITLE=$(echo "$LATEST_JSON" | jq -r .name)
-      
+
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "TITLE=$TITLE" >> $GITHUB_ENV
-      
-          UPDATE_URL=$(echo "$LATEST_JSON" | jq -r \
-            '.assets[] | select(.name=="almo3lem_setup_light.exe") | .browser_download_url')
-      
-          if [ -z "$UPDATE_URL" ]; then
-            echo "❌ almo3lem_setup_light.exe not found in release assets"
-            exit 1
-          fi
-      
-          echo "UPDATE_URL=$UPDATE_URL" >> $GITHUB_ENV
 
+          UPDATE_URL="https://github.com/Anas-jaf/almo3lem_releases/releases/download/${VERSION}/almo3lem_setup_light.exe"
+          echo "UPDATE_URL=$UPDATE_URL" >> $GITHUB_ENV
+          
       # 2️⃣ عرض النسخة والعنوان في Logs
       - name: Show release version and title
         run: |
